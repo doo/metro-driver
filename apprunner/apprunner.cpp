@@ -83,7 +83,7 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return -1;
   }
   std::wstring manifestName(args[1]->Data());
-  DWORD foundPos = manifestName.rfind(L"AppxManifest.xml");
+  size_t foundPos = manifestName.rfind(L"AppxManifest.xml");
   if (foundPos == std::wstring::npos || foundPos != args[1]->Length()-16 ) {
     _tprintf_s(L"The first parameter needs to be a file called AppxManifest.xml");
     return -1;
