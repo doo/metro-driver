@@ -18,13 +18,10 @@ void appCleanup(PackageManager^ packageManager, String^ packageName) {
 
 // format the package version the same way as in the manifest
 Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version) {
-  std::wstringstream versionStringBuffer;
-  versionStringBuffer << version.Major.ToString()->Data() << 
-    "." << version.Minor.ToString()->Data() << 
-    "." << version.Build.ToString()->Data() <<
-    "." << version.Revision.ToString()->Data();
-
-  return ref new Platform::String(versionStringBuffer.str().c_str());
+  return version.Major.ToString() +
+    "." + version.Minor.ToString() +
+    "." + version.Build.ToString() +
+    "." + version.Revision.ToString();
 }
 
 // retrieve the SID of the current user
