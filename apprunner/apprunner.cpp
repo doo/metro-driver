@@ -1,12 +1,14 @@
 #include "stdafx.h"
 
 #using <Windows.winmd>
+#include "helper.h"
 
 using Platform::String;
 using Windows::Foundation::Uri;
 using Windows::Foundation::Collections::IIterable;
 using Windows::Data::Xml::Dom::XmlDocument;
 using namespace Windows::Management::Deployment;
+
 
 // uninstall the application
 void appCleanup(PackageManager^ packageManager, String^ packageName) {
@@ -162,16 +164,11 @@ int __cdecl main(Platform::Array<String^>^ args) {
 
   // check if there was a callback supplied
   if (args->Length > 2) {
-    PROCESS_INFORMATION processInformation;
-    STARTUPINFO startupInfo;
-    ZeroMemory(&processInformation, sizeof(processInformation));
-    ZeroMemory(&startupInfo, sizeof(startupInfo));
+    EmptyStruct<PROCESS_INFORMATION> processInformation;
+    EmptyStruct<STARTUPINFO> startupInfo;
     std::wstring commandLine(("\"" + args[2] + "\" " + packageName + packageSuffix)->Data());
     if (CreateProcessW(NULL, &commandLine[0], NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInformation)) {
-      WaitForSingleObjectEx(processInformation.hProcess, INFINITE, false );
-      // Close process and thread handles. 
-      CloseHandle( processInformation.hProcess );
-      CloseHandle( processInformation.hThread );
+      WaitForSingleObjectEx(processInformation.hProcess, INFINITE, false);
     } else {
       auto errorCode = GetLastError();
       LPVOID messageBuffer;
