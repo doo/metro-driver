@@ -129,7 +129,15 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return -1;
   }
 
-  // package found, retrieve the suffix from the package name to build the application id
+  // package found, enable debugging so it can run in the background without getting suspended
+  ATL::CComQIPtr<IPackageDebugSettings> sp;
+  HRESULT res = sp.CoCreateInstance(CLSID_PackageDebugSettings, NULL, CLSCTX_ALL);
+  if FAILED(res) {
+    _tprintf_s(L"Failed to instantiate a PackageDebugSettings object. Continuing anyway.");
+  } else {
+    sp->EnableDebugging(package->Id->FullName->Data(), NULL, NULL);
+  }
+
   auto packageSuffix = ref new Platform::String(StrRChrW(package->Id->FullName->Data(), nullptr, '_'));
   auto fullAppId = packageName + packageSuffix + "!" + appId;
 
@@ -137,7 +145,7 @@ int __cdecl main(Platform::Array<String^>^ args) {
 
   // start the application
   ATL::CComPtr<IApplicationActivationManager> appManager;
-  HRESULT res = appManager.CoCreateInstance(__uuidof(ApplicationActivationManager));
+  res = appManager.CoCreateInstance(__uuidof(ApplicationActivationManager));
   ATLVERIFY(SUCCEEDED(res));
   if FAILED(res) {
     _tprintf_s(L"Could not create ApplicationActivationManager\n");
