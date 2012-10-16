@@ -19,3 +19,6 @@
 #include <Sddl.h>
 #include <ppl.h>
 #include <ppltasks.h>
+
+#include <iostream>
+#include <fstream>

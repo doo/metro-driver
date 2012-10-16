@@ -1,174 +1,54 @@
 #include "stdafx.h"
 
-#using <Windows.winmd>
 #include "helper.h"
+#include "Package.h"
 
 using Platform::String;
-using Windows::Foundation::Uri;
-using Windows::Foundation::Collections::IIterable;
-using Windows::Data::Xml::Dom::XmlDocument;
-using namespace Windows::Management::Deployment;
 
+using namespace doo::metrodriver;
 
-// uninstall the application
-void appCleanup(PackageManager^ packageManager, String^ packageName) {
-  auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RemovePackageAsync(packageName)).get();
-  if (deploymentResult->ErrorText->Length() > 0) {
-    _tprintf_s(L"Uninstalling the package failed: %s", deploymentResult->ErrorText->Data());
-  }
-}
-
-// format the package version the same way as in the manifest
-Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version) {
-  return version.Major.ToString() +
-    "." + version.Minor.ToString() +
-    "." + version.Build.ToString() +
-    "." + version.Revision.ToString();
-}
-
-// retrieve the SID of the current user
-// because PackageManager::FindPackages requires elevated privileges 
-// while PackageManager::FindPackagesForUser does not
-Platform::String^ getSidStringForCurrentUser() {
-  ATL::CHandle processHandle(GetCurrentProcess());
-  HANDLE tokenHandle;
-  if(OpenProcessToken(processHandle,TOKEN_READ,&tokenHandle) == FALSE) {
-    printf("Error: Couldn't open the process token\n");
-    return nullptr;
-  }
-  PTOKEN_USER userToken;
-  DWORD userTokenSize;
-  GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, nullptr, 0, &userTokenSize);
-  userToken = (PTOKEN_USER) HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, userTokenSize);
-  GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS::TokenUser, userToken, userTokenSize, &userTokenSize);
-
-  LPTSTR simpleSidString;
-  ConvertSidToStringSid(userToken->User.Sid, &simpleSidString);
-  auto sidString = ref new String(simpleSidString);
-
-  LocalFree(simpleSidString); // as per documentation of ConvertSidToStringSid
-  HeapFree(GetProcessHeap(), 0, userToken);
-  CloseHandle(tokenHandle);
-
-  return sidString;
-}
-
-// find the specified package
-Windows::ApplicationModel::Package^ findPackage(PackageManager^ packageManager, String^ userSid, String^ packageName, String^ publisher, String^ version) {
-  Windows::ApplicationModel::Package^ package = nullptr;
-  auto packageIterable = packageManager->FindPackagesForUser(userSid, packageName, publisher);
-  auto packageIterator = packageIterable->First();
-  while (packageIterator->HasCurrent) {
-    auto currentPackage = packageIterator->Current;
-    auto currentPackageVersion = getPackageVersionString(currentPackage->Id->Version);
-    if (StrCmpW(currentPackageVersion->Data(), version->Data()) == 0) {
-      package = currentPackage;
-      break;
-    }
-    packageIterator->MoveNext();
-  }
-  return package;
-}
-
-/**
-  Install and run the application identified by the manifest given as first parameter
-  If a second parameter is given, it will be called after the application has exited
-  The first parameter to the callback will be the name of the package
-*/
-int __cdecl main(Platform::Array<String^>^ args) {
-  // do some param checking first
+// validate command line arguments
+// the first argument must be a file called AppxManifest.xml
+// the second is optional but must be an existing file if given
+bool validateArguments(Platform::Array<String^>^ args) {
   if (args->Length < 2) {
-    _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run");
-    return -1;
+    _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run.\n");
+    return false;
   }
   std::wstring manifestName(args[1]->Data());
   size_t foundPos = manifestName.rfind(L"AppxManifest.xml");
   if (foundPos == std::wstring::npos || foundPos != args[1]->Length()-16 ) {
-    _tprintf_s(L"The first parameter needs to be a file called AppxManifest.xml");
-    return -1;
-  }
-  // read the package name and version from the manifest
-  Windows::Storage::StorageFile^ manifestFile;
-  try {
-     manifestFile = Concurrency::task<Windows::Storage::StorageFile^>(
-      Windows::Storage::StorageFile::GetFileFromPathAsync(args[1])
-     ).get();
-  } catch (Platform::Exception^ e) {
-    _tprintf_s(L"Error reading file: %s.", e->Message->Data());
-    return e->HResult;
+    _tprintf_s(L"The first parameter needs to be a file called AppxManifest.xml\n");
+    return false;
   }
 
-  XmlDocument^ xmlDocument = Concurrency::task<XmlDocument^>(
-    XmlDocument::LoadFromFileAsync(manifestFile)
-  ).get();
-
-  auto identityNode = xmlDocument->SelectSingleNodeNS("//mf:Package/mf:Identity", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
-  auto packageName = identityNode->Attributes->GetNamedItem("Name")->NodeValue->ToString();
-  auto packageVersion = identityNode->Attributes->GetNamedItem("Version")->NodeValue->ToString();
-  auto publisher = identityNode->Attributes->GetNamedItem("Publisher")->NodeValue->ToString();
-  auto applicationNode = xmlDocument->SelectSingleNodeNS("//mf:Package/mf:Applications/mf:Application[1]", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
-  auto appId = applicationNode->Attributes->GetNamedItem("Id")->NodeValue->ToString();
-
-  // install the package
-  auto packageUri = ref new Windows::Foundation::Uri(args[1]);
-  auto packageManager = ref new PackageManager();
-  auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RegisterPackageAsync(
-    packageUri, 
-    nullptr, 
-    DeploymentOptions::DevelopmentMode
-    )).get();
-
-  if (deploymentResult->ErrorText->Length() > 0) {
-    _tprintf_s(L"Error while installing the package: %s", deploymentResult->ErrorText->Data());
-    return -1;
+  std::ifstream manifestFile(args[1]->Data(), std::ifstream::in);
+  if (!manifestFile.is_open()) {
+    _tprintf_s(L"Could not open manifest file %s\n", args[1]->Data());
+    return false;
   }
+  manifestFile.close();
 
-  // package installed, retrieve it from the system to find out about its crazy suffix ^^
-  auto userSid = getSidStringForCurrentUser();
-  auto package = findPackage(packageManager, userSid, packageName, publisher, packageVersion);
-  if (package == nullptr) {
-    _tprintf_s(L"Package supposedly installed but not found in in the package manager.\n");
-    return -1;
-  }
-
-  // package found, retrieve the suffix from the package name to build the application id
-  auto packageSuffix = ref new Platform::String(StrRChrW(package->Id->FullName->Data(), nullptr, '_'));
-  auto fullAppId = packageName + packageSuffix + "!" + appId;
-
-  _tprintf_s(L"Preparing to launch app %s\n", appId->Data());
-
-  // start the application
-  ATL::CComPtr<IApplicationActivationManager> appManager;
-  HRESULT res = appManager.CoCreateInstance(__uuidof(ApplicationActivationManager));
-  ATLVERIFY(SUCCEEDED(res));
-  if FAILED(res) {
-    _tprintf_s(L"Could not create ApplicationActivationManager\n");
-    appCleanup(packageManager, packageName);
-    return res;
-  }
-
-  DWORD processId;
-  res = appManager->ActivateApplication(fullAppId->Data(), nullptr, AO_NONE, &processId);
-  if FAILED(res) {
-    _tprintf_s(L"Could not activate application %s\n", fullAppId->Data());
-    appCleanup(packageManager, packageName);
-    return res;
-  }
-  ATL::CHandle process(OpenProcess(SYNCHRONIZE, false, processId));  
-  if (process == INVALID_HANDLE_VALUE) {
-    return -1;
-  }
-
-  _tprintf_s(L"Waiting for %s to finish...\n",fullAppId->Data());
-  WaitForSingleObjectEx(process, INFINITE, false);
-
-  // check if there was a callback supplied
   if (args->Length > 2) {
+    std::ifstream callback(args[2]->Data(), std::ifstream::in);
+    if (!callback.is_open()) {
+      _tprintf_s(L"Callback not found: %s \n", args[2]->Data());
+    }
+    callback.close();
+  }
+  return true;
+}
+
+// invoke the executable in callback with fullAppId as its argument
+void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
     EmptyStruct<PROCESS_INFORMATION> processInformation;
     EmptyStruct<STARTUPINFO> startupInfo;
-    std::wstring commandLine(("\"" + args[2] + "\" " + packageName + packageSuffix)->Data());
+    std::wstring commandLine(("\"" + callback + "\" " + fullAppId)->Data());
     if (CreateProcessW(NULL, &commandLine[0], NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInformation)) {
-      WaitForSingleObjectEx(processInformation.hProcess, INFINITE, false);
+      WaitForSingleObjectEx(processInformation.hProcess, INFINITE, false );
+      // Close process and thread handles. 
+      CloseHandle( processInformation.hProcess );
+      CloseHandle( processInformation.hThread );
     } else {
       auto errorCode = GetLastError();
       LPVOID messageBuffer;
@@ -181,10 +61,50 @@ int __cdecl main(Platform::Array<String^>^ args) {
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
         (LPTSTR)&messageBuffer,
         0, NULL );
-      _tprintf_s(L"Couldn't execute callback: %s", messageBuffer);
+      _tprintf_s(L"Couldn't execute callback: %s\n", messageBuffer);
       LocalFree(messageBuffer);
     }
+}
+
+/**
+  Install and run the application identified by the manifest given as first parameter
+  If a second parameter is given, it will be called after the application has exited
+  The first parameter to the callback will be the name of the package
+ **/
+int __cdecl main(Platform::Array<String^>^ args) {
+  if (!validateArguments(args)) {
+    return -1;
   }
-  appCleanup(packageManager, package->Id->FullName);
+
+  Package^ package;
+  try {
+    package = ref new Package(args[1]);
+  } catch (Platform::COMException^ e) {
+    _tprintf_s(L"Error while installing the package: %s\n", e->Message);
+    return e->HResult;
+  }
+
+  _tprintf_s(L"Enabling debugging\n");
+  package->DebuggingEnabled = true;
+
+  // start the application
+  _tprintf_s(L"Launching app %s\n", package->FullAppId->Data());
+  auto processId = package->StartApplication();
+  auto process = ATL::CHandle(OpenProcess(SYNCHRONIZE, false, (DWORD)processId));
+  if (process == INVALID_HANDLE_VALUE) {
+    _tprintf_s(L"Could not start app. Terminating.\n");
+    return -1;
+  }
+
+  _tprintf_s(L"Waiting for application %s to finish...\n", package->FullAppId->Data());
+  WaitForSingleObjectEx(process, INFINITE, false);
+  _tprintf_s(L"Application complete\n");
+
+  // check if there was a callback supplied
+  if (args->Length > 2) {
+    _tprintf_s(L"Invoking callback: %s\n", args[2]->Data());
+    InvokeCallback(args[2], package->FullAppId);
+  }
+  _tprintf_s(L"Done. Thank you for using MetroDriver.\n");
   return 0;
 }
