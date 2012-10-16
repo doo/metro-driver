@@ -150,6 +150,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ApplicationMetadata.h" />
+    <ClInclude Include="helper.h" />
     <ClInclude Include="Package.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="SystemUtils.h" />

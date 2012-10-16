@@ -43,10 +43,8 @@ bool validateArguments(Platform::Array<String^>^ args) {
 
 // invoke the executable in callback with fullAppId as its argument
 void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
-    PROCESS_INFORMATION processInformation;
-    STARTUPINFO startupInfo;
-    ZeroMemory(&processInformation, sizeof(processInformation));
-    ZeroMemory(&startupInfo, sizeof(startupInfo));
+    EmptyStruct<PROCESS_INFORMATION> processInformation;
+    EmptyStruct<STARTUPINFO> startupInfo;
     std::wstring commandLine(("\"" + callback + "\" " + fullAppId)->Data());
     if (CreateProcessW(NULL, &commandLine[0], NULL, NULL, FALSE, 0, NULL, NULL, &startupInfo, &processInformation)) {
       WaitForSingleObjectEx(processInformation.hProcess, INFINITE, false );
