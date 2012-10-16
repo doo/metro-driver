@@ -66,12 +66,16 @@ Package::~Package() {
 }
 
 void Package::DebuggingEnabled::set(bool newValue) { 
-  ATL::CComQIPtr<IPackageDebugSettings> sp;
-  HRESULT res = sp.CoCreateInstance(CLSID_PackageDebugSettings, NULL, CLSCTX_ALL);
+  ATL::CComQIPtr<IPackageDebugSettings> packageDebugSettings;
+  HRESULT res = packageDebugSettings.CoCreateInstance(CLSID_PackageDebugSettings, NULL, CLSCTX_ALL);
   if FAILED(res) {
     _tprintf_s(L"Failed to instantiate a PackageDebugSettings object. Continuing anyway.");
   } else {
-    sp->EnableDebugging(systemPackage->Id->FullName->Data(), NULL, NULL);
+    if (newValue) {
+      packageDebugSettings->EnableDebugging(systemPackage->Id->FullName->Data(), NULL, NULL);
+    } else {
+      packageDebugSettings->DisableDebugging(systemPackage->Id->FullName->Data());
+    }
   }
 }
 
