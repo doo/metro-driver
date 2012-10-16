@@ -1,8 +1,6 @@
 #include "stdafx.h"
-#include "ApplicationMetadata.h"
 
-#include <fstream>
-#include <string>
+#include "ApplicationMetadata.h"
 
 using doo::metrodriver::ApplicationMetadata;
 

@@ -1,8 +1,6 @@
 #include "stdafx.h"
 
-#include <iostream>
-#include <fstream>
-
+#include "helper.h"
 #include "Package.h"
 
 using Platform::String;

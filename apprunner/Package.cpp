@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "Package.h"
 
+#include "Package.h"
 #include "SystemUtils.h"
 
 using Windows::Storage::StorageFile;
