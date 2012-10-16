@@ -16,9 +16,10 @@ bool validateArguments(Platform::Array<String^>^ args) {
     return false;
   }
   std::wstring manifestName(args[1]->Data());
-  size_t foundPos = manifestName.rfind(L"AppxManifest.xml");
+  std::transform(manifestName.begin(), manifestName.end(), manifestName.begin(), ::tolower);
+  size_t foundPos = manifestName.rfind(L"appxmanifest.xml");
   if (foundPos == std::wstring::npos || foundPos != args[1]->Length()-16 ) {
-    _tprintf_s(L"The first parameter needs to be a file called AppxManifest.xml\n");
+    _tprintf_s(L"The first parameter needs to be a file called AppXManifest.xml\n");
     return false;
   }
 
