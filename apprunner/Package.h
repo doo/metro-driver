@@ -38,6 +38,7 @@ namespace doo {
 
       Windows::ApplicationModel::Package^ findSystemPackage();
       Concurrency::task<Windows::Management::Deployment::DeploymentResult^> Deploy();
+      void UninstallPreviousVersions();
       Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version);
 
       ApplicationMetadata^ metadata;
