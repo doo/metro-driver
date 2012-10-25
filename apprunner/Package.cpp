@@ -14,6 +14,7 @@ Package::Package(Platform::String^ manifestPath) {
   packageManager = ref new PackageManager();
   packageUri = ref new Windows::Foundation::Uri(manifestPath);
   metadata = ref new ApplicationMetadata(manifestPath);
+  UninstallPreviousVersions();
   auto deploymentResult = Deploy().get();
   if (deploymentResult->ErrorText->Length() > 0) {
     throw ref new Platform::FailureException("Deployment failed");
@@ -59,7 +60,8 @@ Platform::String^ Package::getPackageVersionString(Windows::ApplicationModel::Pa
 }
 
 Package::~Package() {
-  auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RemovePackageAsync(systemPackage->Id->FullName)).get();
+  auto deploymentResult = Concurrency::task<DeploymentResult^>(
+    packageManager->RemovePackageAsync(systemPackage->Id->FullName)).get();
   if (deploymentResult->ErrorText->Length() > 0) {
     _tprintf_s(L"Uninstalling the package failed: %s", deploymentResult->ErrorText->Data());
   }
@@ -76,6 +78,21 @@ void Package::DebuggingEnabled::set(bool newValue) {
     } else {
       packageDebugSettings->DisableDebugging(systemPackage->Id->FullName->Data());
     }
+  }
+}
+
+void Package::UninstallPreviousVersions() {
+  Windows::ApplicationModel::Package^ package = nullptr;
+  Platform::String^ userSid = SystemUtils::GetSIDForCurrentUser();
+  auto packageIterable = packageManager->FindPackagesForUser(userSid, metadata->PackageName, metadata->Publisher);
+  auto packageIterator = packageIterable->First();
+  while (packageIterator->HasCurrent) {
+    auto currentPackage = packageIterator->Current;
+    auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RemovePackageAsync(currentPackage->Id->FullName)).get();
+    if (deploymentResult->ErrorText->Length() > 0) {
+      throw ref new Platform::FailureException(L"Could not uninstall previously installed version: " + deploymentResult->ErrorText);
+    }
+    packageIterator->MoveNext();
   }
 }
 
