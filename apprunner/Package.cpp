@@ -28,6 +28,7 @@ void Package::Install() {
     throw ref new Platform::FailureException("Deployment failed");
   }
   systemPackage = findSystemPackage();
+  _tprintf_s(L"Installation successful. Full name is: %s\n", systemPackage->Id->FullName->Data());
   packageSuffix = ref new Platform::String(StrRChrW(systemPackage->Id->FullName->Data(), nullptr, '_'));
 
 }
@@ -73,7 +74,7 @@ void Package::DebuggingEnabled::set(bool newValue) {
     }  
   }
   if (newValue) {
-    _tprintf_s(L"Enabling debugging\n");
+    _tprintf_s(L"Enabling debugging for %s\n", systemPackage->Id->FullName->Data());
     packageDebugSettings->EnableDebugging(systemPackage->Id->FullName->Data(), NULL, NULL);
   } else {
     _tprintf_s(L"Disabling debugging\n");
@@ -89,7 +90,7 @@ void Package::Uninstall() {
   auto packageIterator = packageIterable->First();
   while (packageIterator->HasCurrent) {
     auto currentPackage = packageIterator->Current;
-    _tprintf_s(L"Uninstalling %s %s\n", currentPackage->Id->Name->Data(), currentPackage->Id->Version.ToString()->Data());
+    _tprintf_s(L"Uninstalling %s %s\n", currentPackage->Id->Name->Data(), getPackageVersionString(currentPackage->Id->Version)->Data());
     auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RemovePackageAsync(currentPackage->Id->FullName)).get();
     if (deploymentResult->ErrorText->Length() > 0) {
       throw ref new Platform::FailureException(L"Could not uninstall previously installed version: " + deploymentResult->ErrorText);
