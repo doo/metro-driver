@@ -141,8 +141,8 @@ int __cdecl main(Platform::Array<String^>^ args) {
       runPackage(package);
       // check if there was a callback supplied
       if (args->Length > 2) {
-        _tprintf_s(L"Invoking callback: %s\n", args[2]->Data());
-        InvokeCallback(args[2], package->FullAppId);
+        _tprintf_s(L"Invoking callback: %s\n", args[3]->Data());
+        InvokeCallback(args[3], package->FullAppId);
       }
     case Uninstall:
       package->Uninstall();
