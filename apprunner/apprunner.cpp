@@ -136,6 +136,7 @@ int __cdecl main(Platform::Array<String^>^ args) {
   switch (getAction(args->Length > 2 ? args[2]->Data() : nullptr)) {
     case Install:
       package->Install();
+      package->DebuggingEnabled = false;
       break;
     case Run:
       runPackage(package);
