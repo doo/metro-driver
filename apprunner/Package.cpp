@@ -14,22 +14,24 @@ Package::Package(Platform::String^ manifestPath) {
   packageManager = ref new PackageManager();
   packageUri = ref new Windows::Foundation::Uri(manifestPath);
   metadata = ref new ApplicationMetadata(manifestPath);
-  UninstallPreviousVersions();
-  auto deploymentResult = Deploy().get();
+}
+
+void Package::Install() {
+  Uninstall(); // make sure the package can be installed in this version
+  _tprintf_s(L"Installing app\n");
+  auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RegisterPackageAsync(
+    packageUri, 
+    nullptr, 
+    DeploymentOptions::DevelopmentMode
+    )).get();
   if (deploymentResult->ErrorText->Length() > 0) {
     throw ref new Platform::FailureException("Deployment failed");
   }
   systemPackage = findSystemPackage();
+  _tprintf_s(L"Installation successful. Full name is: %s\n", systemPackage->Id->FullName->Data());
   packageSuffix = ref new Platform::String(StrRChrW(systemPackage->Id->FullName->Data(), nullptr, '_'));
-}
 
-Concurrency::task<DeploymentResult^> Package::Deploy() {
-  return Concurrency::task<DeploymentResult^>(packageManager->RegisterPackageAsync(
-    packageUri, 
-    nullptr, 
-    DeploymentOptions::DevelopmentMode
-    ));
-};
+}
 
 Windows::ApplicationModel::Package^ Package::findSystemPackage() {
   Windows::ApplicationModel::Package^ package = nullptr;
@@ -59,35 +61,36 @@ Platform::String^ Package::getPackageVersionString(Windows::ApplicationModel::Pa
     "." + version.Revision.ToString();
 }
 
-Package::~Package() {
-  auto deploymentResult = Concurrency::task<DeploymentResult^>(
-    packageManager->RemovePackageAsync(systemPackage->Id->FullName)).get();
-  if (deploymentResult->ErrorText->Length() > 0) {
-    _tprintf_s(L"Uninstalling the package failed: %s", deploymentResult->ErrorText->Data());
-  }
-}
-
 void Package::DebuggingEnabled::set(bool newValue) { 
-  ATL::CComQIPtr<IPackageDebugSettings> packageDebugSettings;
-  HRESULT res = packageDebugSettings.CoCreateInstance(CLSID_PackageDebugSettings, NULL, CLSCTX_ALL);
-  if FAILED(res) {
-    _tprintf_s(L"Failed to instantiate a PackageDebugSettings object. Continuing anyway.");
+  static ATL::CComQIPtr<IPackageDebugSettings> packageDebugSettings;
+  if (!systemPackage) {
+    throw ref new Platform::FailureException(L"Package needs to be installed before configuring debugging");
+  }
+  if (!packageDebugSettings) {
+    HRESULT res = packageDebugSettings.CoCreateInstance(CLSID_PackageDebugSettings, NULL, CLSCTX_ALL);
+    if FAILED(res) {
+      _tprintf_s(L"Failed to instantiate a PackageDebugSettings object. Debugging could not be configured");
+      return;
+    }  
+  }
+  if (newValue) {
+    _tprintf_s(L"Enabling debugging for %s\n", systemPackage->Id->FullName->Data());
+    packageDebugSettings->EnableDebugging(systemPackage->Id->FullName->Data(), NULL, NULL);
   } else {
-    if (newValue) {
-      packageDebugSettings->EnableDebugging(systemPackage->Id->FullName->Data(), NULL, NULL);
-    } else {
-      packageDebugSettings->DisableDebugging(systemPackage->Id->FullName->Data());
-    }
+    _tprintf_s(L"Disabling debugging\n");
+    packageDebugSettings->DisableDebugging(systemPackage->Id->FullName->Data());
   }
 }
 
-void Package::UninstallPreviousVersions() {
+// uninstall the current and all previous versions of this package
+void Package::Uninstall() {
   Windows::ApplicationModel::Package^ package = nullptr;
   Platform::String^ userSid = SystemUtils::GetSIDForCurrentUser();
   auto packageIterable = packageManager->FindPackagesForUser(userSid, metadata->PackageName, metadata->Publisher);
   auto packageIterator = packageIterable->First();
   while (packageIterator->HasCurrent) {
     auto currentPackage = packageIterator->Current;
+    _tprintf_s(L"Uninstalling %s %s\n", currentPackage->Id->Name->Data(), getPackageVersionString(currentPackage->Id->Version)->Data());
     auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RemovePackageAsync(currentPackage->Id->FullName)).get();
     if (deploymentResult->ErrorText->Length() > 0) {
       throw ref new Platform::FailureException(L"Could not uninstall previously installed version: " + deploymentResult->ErrorText);
@@ -97,6 +100,10 @@ void Package::UninstallPreviousVersions() {
 }
 
 long long Package::StartApplication() {
+  if (!systemPackage) {
+    Install();
+  }
+
   auto fullAppId = metadata->PackageName + packageSuffix + "!" + metadata->AppId;
 
   ATL::CComPtr<IApplicationActivationManager> appManager;

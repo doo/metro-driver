@@ -30,15 +30,17 @@ namespace doo {
         };
       }
 
+      // uninstall the app, including possible previous versions
+      void Uninstall();
+
+      // just install the app
+      void Install();
+
       // start the app and return the process id
       long long StartApplication();
 
     private:
-      ~Package();
-
       Windows::ApplicationModel::Package^ findSystemPackage();
-      Concurrency::task<Windows::Management::Deployment::DeploymentResult^> Deploy();
-      void UninstallPreviousVersions();
       Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version);
 
       ApplicationMetadata^ metadata;
