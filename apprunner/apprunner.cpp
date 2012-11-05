@@ -7,9 +7,29 @@ using Platform::String;
 
 using namespace doo::metrodriver;
 
-// validate command line arguments
-// the first argument must be a file called AppxManifest.xml
-// the second is optional but must be an existing file if given
+enum Action {
+  Run,
+  Install,
+  Uninstall
+};
+
+Action getAction(const wchar_t* name) {
+  if (name == nullptr || StrCmpIW(name, L"run") == 0) {
+    return Action::Run;
+  } else if (StrCmpIW(name, L"install") == 0) { 
+    return Action::Install;
+  } else if (StrCmpIW(name, L"uninstall") == 0) {
+    return Action::Uninstall;
+  }
+  throw ref new Platform::FailureException("Invalid action");
+}
+
+/*
+ validate command line arguments
+ the first argument must be a file called AppxManifest.xml
+ the second argument is the action to perform: run, install, uninstall
+ the third is optional but if present must be an existing executable file
+*/
 bool validateArguments(Platform::Array<String^>^ args) {
   if (args->Length < 2) {
     _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run.\n");
@@ -31,12 +51,23 @@ bool validateArguments(Platform::Array<String^>^ args) {
   manifestFile.close();
 
   if (args->Length > 2) {
-    std::ifstream callback(args[2]->Data(), std::ifstream::in);
+    try {
+      auto action = getAction(args[2]->Data());
+    } catch (...) {
+      _tprintf_s(L"Invalid action. Available commands are: run, install, uninstall\n");
+      return false;      
+    }
+  }
+
+  if (args->Length > 3) {
+    std::ifstream callback(args[3]->Data(), std::ifstream::in);
     if (!callback.is_open()) {
-      _tprintf_s(L"Callback not found: %s \n", args[2]->Data());
+      _tprintf_s(L"Callback not found: %s \n", args[3]->Data());
+      return false;
     }
     callback.close();
   }
+
   return true;
 }
 
@@ -67,6 +98,23 @@ void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
     }
 }
 
+void runPackage(Package^ package) {
+  package->Install();
+  package->DebuggingEnabled = true;
+
+  // start the application
+  _tprintf_s(L"Launching app %s\n", package->FullAppId->Data());
+  auto processId = package->StartApplication();
+  auto process = ATL::CHandle(OpenProcess(SYNCHRONIZE, false, (DWORD)processId));
+  if (process == INVALID_HANDLE_VALUE) {
+    throw ref new Platform::FailureException(L"Could not start app. Terminating.\n");
+  }
+
+  _tprintf_s(L"Waiting for application %s to finish...\n", package->FullAppId->Data());
+  WaitForSingleObjectEx(process, INFINITE, false);
+  _tprintf_s(L"Application complete\n");
+}
+
 /**
   Install and run the application identified by the manifest given as first parameter
   If a second parameter is given, it will be called after the application has exited
@@ -85,26 +133,20 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return e->HResult;
   }
 
-  _tprintf_s(L"Enabling debugging\n");
-  package->DebuggingEnabled = true;
-
-  // start the application
-  _tprintf_s(L"Launching app %s\n", package->FullAppId->Data());
-  auto processId = package->StartApplication();
-  auto process = ATL::CHandle(OpenProcess(SYNCHRONIZE, false, (DWORD)processId));
-  if (process == INVALID_HANDLE_VALUE) {
-    _tprintf_s(L"Could not start app. Terminating.\n");
-    return -1;
-  }
-
-  _tprintf_s(L"Waiting for application %s to finish...\n", package->FullAppId->Data());
-  WaitForSingleObjectEx(process, INFINITE, false);
-  _tprintf_s(L"Application complete\n");
-
-  // check if there was a callback supplied
-  if (args->Length > 2) {
-    _tprintf_s(L"Invoking callback: %s\n", args[2]->Data());
-    InvokeCallback(args[2], package->FullAppId);
+  switch (getAction(args->Length > 2 ? args[2]->Data() : nullptr)) {
+    case Install:
+      package->Install();
+      package->DebuggingEnabled = false;
+      break;
+    case Run:
+      runPackage(package);
+      // check if there was a callback supplied
+      if (args->Length > 2) {
+        _tprintf_s(L"Invoking callback: %s\n", args[3]->Data());
+        InvokeCallback(args[3], package->FullAppId);
+      }
+    case Uninstall:
+      package->Uninstall();
   }
   _tprintf_s(L"Done. Thank you for using MetroDriver.\n");
   return 0;
