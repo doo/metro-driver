@@ -17,8 +17,8 @@ static Platform::String^ stringToPlatformString(const char* _input) {
     return result;
 }
 
-// read metadata from the manifest
-ApplicationMetadata::ApplicationMetadata(Platform::String^ manifestPath) {
+// instantiate Metadata from an extracted manifest on the disk
+ApplicationMetadata^ ApplicationMetadata::CreateFromManifest(Platform::String^ manifestPath) {
   std::ifstream input(manifestPath->Data(), std::ifstream::in);
   if (!input.is_open()) {
     throw ref new Platform::InvalidArgumentException(L"Could not open manifest");
@@ -33,6 +33,20 @@ ApplicationMetadata::ApplicationMetadata(Platform::String^ manifestPath) {
     auto manifest = ref new XmlDocument();
     manifest->LoadXml(platformString);
 
+    auto metadata = ref new ApplicationMetadata();
+    metadata->ReadDataFromXml(manifest);
+
+    return metadata;
+  } catch (Platform::COMException^ e) {
+    _tprintf_s(L"Error parsing XML: %s\n", e->Message->Data());
+    throw e;
+  }
+}
+
+
+
+// read metadata from the manifest
+void ApplicationMetadata::ReadDataFromXml(Windows::Data::Xml::Dom::XmlDocument^ manifest) {
     auto identityNode = manifest->SelectSingleNodeNS("//mf:Package/mf:Identity", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
     packageName = identityNode->Attributes->GetNamedItem("Name")->NodeValue->ToString();
     packageVersion = identityNode->Attributes->GetNamedItem("Version")->NodeValue->ToString();
@@ -40,8 +54,4 @@ ApplicationMetadata::ApplicationMetadata(Platform::String^ manifestPath) {
   
     auto applicationNode = manifest->SelectSingleNodeNS("//mf:Package/mf:Applications/mf:Application[1]", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
     appId = applicationNode->Attributes->GetNamedItem("Id")->NodeValue->ToString();
-  } catch (Platform::COMException^ e) {
-    _tprintf_s(L"Error parsing XML: %s\n", e->Message->Data());
-    throw e;
-  }
 }

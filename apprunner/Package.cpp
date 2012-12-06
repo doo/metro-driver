@@ -13,7 +13,7 @@ using doo::metrodriver::Package;
 Package::Package(Platform::String^ manifestPath) {
   packageManager = ref new PackageManager();
   packageUri = ref new Windows::Foundation::Uri(manifestPath);
-  metadata = ref new ApplicationMetadata(manifestPath);
+  metadata = ApplicationMetadata::CreateFromManifest(manifestPath);
 }
 
 void Package::Install() {
