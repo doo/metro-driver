@@ -24,9 +24,14 @@ Action getAction(const wchar_t* name) {
   throw ref new Platform::FailureException("Invalid action");
 }
 
+static bool endsWith(const std::wstring& str1, const std::wstring& str2) {
+  size_t foundPos = str1.rfind(str2);
+  return (foundPos == (str1.length()-str2.length()));
+}
+
 /*
  validate command line arguments
- the first argument must be a file called AppxManifest.xml
+ the first argument must be a file called AppxManifest.xml or a valid package file ending on ".appx"
  the second argument is the action to perform: run, install, uninstall
  the third is optional but if present must be an existing executable file
 */
@@ -35,20 +40,19 @@ bool validateArguments(Platform::Array<String^>^ args) {
     _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run.\n");
     return false;
   }
-  std::wstring manifestName(args[1]->Data());
-  std::transform(manifestName.begin(), manifestName.end(), manifestName.begin(), ::tolower);
-  size_t foundPos = manifestName.rfind(L"appxmanifest.xml");
-  if (foundPos == std::wstring::npos || foundPos != args[1]->Length()-16 ) {
-    _tprintf_s(L"The first parameter needs to be a file called AppXManifest.xml\n");
+  std::wstring sourceFileName(args[1]->Data());
+  std::transform(sourceFileName.begin(), sourceFileName.end(), sourceFileName.begin(), ::tolower);
+  if (!(endsWith(sourceFileName, L"appxmanifest.xml") || endsWith(sourceFileName, L".appx"))) {
+    _tprintf_s(L"The first parameter needs to be a file called AppXManifest.xml or an .appx file\n");
     return false;
   }
 
-  std::ifstream manifestFile(args[1]->Data(), std::ifstream::in);
-  if (!manifestFile.is_open()) {
-    _tprintf_s(L"Could not open manifest file %s\n", args[1]->Data());
+  std::ifstream sourceFile(args[1]->Data(), std::ifstream::in);
+  if (!sourceFile.is_open()) {
+    _tprintf_s(L"Could not open %s\n", args[1]->Data());
     return false;
   }
-  manifestFile.close();
+  sourceFile.close();
 
   if (args->Length > 2) {
     try {

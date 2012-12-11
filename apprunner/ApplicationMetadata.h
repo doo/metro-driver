@@ -9,6 +9,7 @@ namespace doo {
     public:
 
       static ApplicationMetadata^ CreateFromManifest(Platform::String^ manifestPath);
+      static ApplicationMetadata^ CreateFromAppx(Platform::String^ appxPath);
 
       property Platform::String^ PackageName {
         Platform::String^ get() { return packageName; };
@@ -27,7 +28,8 @@ namespace doo {
       }
       
     private:
-      void ReadDataFromXml(Windows::Data::Xml::Dom::XmlDocument^);
+
+      ApplicationMetadata(const std::string& xml);
       Platform::String^ packageName;
       Platform::String^ packageVersion;
       Platform::String^ publisher;

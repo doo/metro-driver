@@ -34,13 +34,13 @@ namespace doo {
       void Uninstall();
 
       // just install the app
-      void Install();
+      void Install(bool update=true);
 
       // start the app and return the process id
       long long StartApplication();
 
     private:
-      Windows::ApplicationModel::Package^ findSystemPackage();
+      Windows::ApplicationModel::Package^ findSystemPackage(Platform::String^ version);
       Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version);
 
       ApplicationMetadata^ metadata;

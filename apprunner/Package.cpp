@@ -10,47 +10,64 @@ using namespace Windows::Management::Deployment;
 
 using doo::metrodriver::Package;
 
-Package::Package(Platform::String^ manifestPath) {
+Package::Package(Platform::String^ sourcePath) {
   packageManager = ref new PackageManager();
-  packageUri = ref new Windows::Foundation::Uri(manifestPath);
-  metadata = ApplicationMetadata::CreateFromManifest(manifestPath);
+  packageUri = ref new Windows::Foundation::Uri(sourcePath);
+  if (StrCmpIW(sourcePath->Data()+(sourcePath->Length()-5), L".appx") == 0) {
+    metadata = ApplicationMetadata::CreateFromAppx(sourcePath);
+  } else {
+    metadata = ApplicationMetadata::CreateFromManifest(sourcePath);
+  }
 }
 
-void Package::Install() {
-  Uninstall(); // make sure the package can be installed in this version
+void Package::Install(bool update) {
   _tprintf_s(L"Installing app\n");
-  auto deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RegisterPackageAsync(
-    packageUri, 
-    nullptr, 
-    DeploymentOptions::DevelopmentMode
-    )).get();
+  DeploymentResult^ deploymentResult;
+  auto existingPackage = findSystemPackage(nullptr);
+  if (existingPackage) {
+    deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->UpdatePackageAsync(
+                        packageUri, 
+                        nullptr, 
+                        DeploymentOptions::None
+                        )).get();
+  } else {
+    deploymentResult = Concurrency::task<DeploymentResult^>(packageManager->RegisterPackageAsync(
+                        packageUri, 
+                        nullptr, 
+                        DeploymentOptions::None
+                        )).get();
+  }
   if (deploymentResult->ErrorText->Length() > 0) {
     throw ref new Platform::FailureException("Deployment failed");
   }
-  systemPackage = findSystemPackage();
+  systemPackage = findSystemPackage(metadata->PackageVersion);
   _tprintf_s(L"Installation successful. Full name is: %s\n", systemPackage->Id->FullName->Data());
   packageSuffix = ref new Platform::String(StrRChrW(systemPackage->Id->FullName->Data(), nullptr, '_'));
 
 }
 
-Windows::ApplicationModel::Package^ Package::findSystemPackage() {
+Windows::ApplicationModel::Package^ Package::findSystemPackage(Platform::String^ version) {
   Windows::ApplicationModel::Package^ package = nullptr;
   Platform::String^ userSid = SystemUtils::GetSIDForCurrentUser();
   auto packageIterable = packageManager->FindPackagesForUser(userSid, metadata->PackageName, metadata->Publisher);
   auto packageIterator = packageIterable->First();
-  while (packageIterator->HasCurrent) {
-    auto currentPackage = packageIterator->Current;
-    auto currentPackageVersion = getPackageVersionString(currentPackage->Id->Version);
-    if (StrCmpW(currentPackageVersion->Data(), metadata->PackageVersion->Data()) == 0) {
-      package = currentPackage;
-      break;
+  if (version != nullptr) {
+    while (packageIterator->HasCurrent) {
+      auto currentPackage = packageIterator->Current;
+      auto currentPackageVersion = getPackageVersionString(currentPackage->Id->Version);
+      if (StrCmpW(currentPackageVersion->Data(), version->Data()) == 0) {
+        package = currentPackage;
+        break;
+      }
+      packageIterator->MoveNext();
     }
-    packageIterator->MoveNext();
+    if (package == nullptr) {
+      throw ref new Platform::FailureException("Could not find installed package in registry");
+    }
+  } else if (packageIterator->HasCurrent) {
+    package = packageIterator->Current;
   }
 
-  if (package == nullptr) {
-    throw ref new Platform::FailureException("Could not find installed package in registry");
-  }
   return package;
 }
 
