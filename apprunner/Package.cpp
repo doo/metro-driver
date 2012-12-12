@@ -93,6 +93,7 @@ void Package::install(InstallationMode mode) {
       return;
     case Skip:
       if (sameVersionInstalled) {
+        postInstall();
         return;
       }
     case Reinstall:
