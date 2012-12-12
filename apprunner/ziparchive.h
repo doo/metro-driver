@@ -10,7 +10,7 @@ namespace doo {
     class ZipArchive {
     public:
       ZipArchive(const std::string& filename);
-      std::vector<byte> GetFileContentsAsync(const std::string& filename);
+      std::vector<byte> GetFileContents(const std::string& filename);
 
     private:
 #pragma pack(1)

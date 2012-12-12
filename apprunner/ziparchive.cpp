@@ -156,7 +156,7 @@ ZipArchive::ZipArchive(const std::string& filename) {
 /************************************************************************/
 /* Get the uncompressed file contents as an IBuffer                     */
 /************************************************************************/
-std::vector<byte> ZipArchive::GetFileContentsAsync(const std::string& filename) {
+std::vector<byte> ZipArchive::GetFileContents(const std::string& filename) {
   std::vector<std::shared_ptr<ZipArchiveEntry>>::iterator entry = std::find_if(archiveEntries.begin(), archiveEntries.end(), 
     [filename](std::shared_ptr<ZipArchiveEntry> archiveEntry) -> bool {
       return (strcmp(archiveEntry->filename.c_str(), filename.c_str()) == 0);

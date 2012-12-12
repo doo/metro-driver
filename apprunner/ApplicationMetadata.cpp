@@ -33,7 +33,7 @@ ApplicationMetadata^ ApplicationMetadata::CreateFromAppx(Platform::String^ appxP
   try {
     auto zipFilePath = platformToStdString(appxPath);
     doo::zip::ZipArchive appx(zipFilePath);
-    std::vector<byte> manifest = appx.GetFileContentsAsync("AppxManifest.xml");
+    std::vector<byte> manifest = appx.GetFileContents("AppxManifest.xml");
     return ref new ApplicationMetadata(std::string(manifest.begin(), manifest.end()));
   } catch (Platform::COMException^ e) {
     _tprintf_s(L"Error decompressing appx file from %s: %s\n", appxPath->Data(), e->Message->Data());

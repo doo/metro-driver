@@ -149,9 +149,9 @@ void Package::findDependencyPackages() {
 }
 
 void Package::findDependenciesInDirectory(std::string appxPath) {
-  std::string dependencyDir = appxPath + "*.appx";
+  std::string dependencySearchFilter = appxPath + "*.appx";
   WIN32_FIND_DATAA findData;
-  auto findFirstHandle = FindFirstFileA(dependencyDir.c_str(), &findData);
+  auto findFirstHandle = FindFirstFileA(dependencySearchFilter.c_str(), &findData);
   if (findFirstHandle == INVALID_HANDLE_VALUE) {
     return;
   }
