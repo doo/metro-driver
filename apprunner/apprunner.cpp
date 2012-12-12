@@ -132,9 +132,10 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return -1;
   }
 
-  Package package(args[1]);
+  try {
+    Package package(args[1]);
 
-  switch (getAction(args[2]->Data())) {
+    switch (getAction(args[2]->Data())) {
     case Install:
       package.install(Package::InstallationMode::Reinstall);
       package.enableDebugging(false);
@@ -154,7 +155,11 @@ int __cdecl main(Platform::Array<String^>^ args) {
     case Uninstall:
       package.uninstall();
       break;
+    }
+  } catch (Platform::Exception^ e) {
+    _tprintf_s(L"An error occurred: %s\n", e->Message->Data());
   }
+  
   _tprintf_s(L"Done. Thank you for using MetroDriver.\n");
   return 0;
 }
