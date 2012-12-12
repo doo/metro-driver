@@ -12,7 +12,7 @@ namespace doo {
       enum InstallationMode {
         Reinstall,
         Update,
-        Skip
+        SkipOrUpdate
       };
 
       // create from either an .appx or AppxManifest.xml

@@ -78,6 +78,11 @@ void Package::install(InstallationMode mode) {
   if (existingPackage) {
     bool sameVersionInstalled = getPackageVersionString(existingPackage->Id->Version)->Equals(metadata->PackageVersion);
     switch (mode) {
+    case SkipOrUpdate:
+      if (sameVersionInstalled) {
+        postInstall();
+        return;
+      }
     case Update:
       if (sameVersionInstalled) {
         throw ref new Platform::InvalidArgumentException(L"Package with the same version already installed, cannot update");
@@ -91,11 +96,6 @@ void Package::install(InstallationMode mode) {
       }
       postInstall();
       return;
-    case Skip:
-      if (sameVersionInstalled) {
-        postInstall();
-        return;
-      }
     case Reinstall:
       uninstall();
       break;

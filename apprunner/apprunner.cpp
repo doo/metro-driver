@@ -106,7 +106,7 @@ void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
 }
 
 void runPackage(Package& package) {
-  package.install(Package::InstallationMode::Skip);
+  package.install(Package::InstallationMode::SkipOrUpdate);
   package.enableDebugging(true);
 
   // start the application
