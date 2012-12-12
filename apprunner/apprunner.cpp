@@ -10,6 +10,7 @@ using namespace doo::metrodriver;
 enum Action {
   Run,
   Install,
+  Update,
   Uninstall
 };
 
@@ -18,6 +19,8 @@ Action getAction(const wchar_t* name) {
     return Action::Run;
   } else if (StrCmpIW(name, L"install") == 0) { 
     return Action::Install;
+  } else if (StrCmpIW(name, L"update") == 0) {
+    return Action::Update;
   } else if (StrCmpIW(name, L"uninstall") == 0) {
     return Action::Uninstall;
   }
@@ -32,7 +35,7 @@ static bool endsWith(const std::wstring& str1, const std::wstring& str2) {
 /*
  validate command line arguments
  the first argument must be a file called AppxManifest.xml or a valid package file ending on ".appx"
- the second argument is the action to perform: run, install, uninstall
+ the second argument is the action to perform: install, update, uninstall or run
  the third is optional but if present must be an existing executable file
 */
 bool validateArguments(Platform::Array<String^>^ args) {
@@ -102,19 +105,19 @@ void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
     }
 }
 
-void runPackage(Package^ package) {
-  package->Install();
-  package->DebuggingEnabled = true;
+void runPackage(Package& package) {
+  package.install(Package::InstallationMode::Skip);
+  package.enableDebugging(true);
 
   // start the application
-  _tprintf_s(L"Launching app %s\n", package->FullAppId->Data());
-  auto processId = package->StartApplication();
+  _tprintf_s(L"Launching app %s\n", package.getFullAppId()->Data());
+  auto processId = package.startApplication();
   auto process = ATL::CHandle(OpenProcess(SYNCHRONIZE, false, (DWORD)processId));
   if (process == INVALID_HANDLE_VALUE) {
     throw ref new Platform::FailureException(L"Could not start app. Terminating.\n");
   }
 
-  _tprintf_s(L"Waiting for application %s to finish...\n", package->FullAppId->Data());
+  _tprintf_s(L"Waiting for application %s to finish...\n", package.getFullAppId()->Data());
   WaitForSingleObjectEx(process, INFINITE, false);
   _tprintf_s(L"Application complete\n");
 }
@@ -129,28 +132,28 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return -1;
   }
 
-  Package^ package;
-  try {
-    package = ref new Package(args[1]);
-  } catch (Platform::COMException^ e) {
-    _tprintf_s(L"Error while installing the package: %s\n", e->Message);
-    return e->HResult;
-  }
+  Package package(args[1]);
 
   switch (getAction(args->Length > 2 ? args[2]->Data() : nullptr)) {
     case Install:
-      package->Install();
-      package->DebuggingEnabled = false;
+      package.install(Package::InstallationMode::Reinstall);
+      package.enableDebugging(false);
+      break;
+    case Update:
+      package.install(Package::InstallationMode::Update);
+      package.enableDebugging(false);
       break;
     case Run:
       runPackage(package);
       // check if there was a callback supplied
       if (args->Length > 2) {
         _tprintf_s(L"Invoking callback: %s\n", args[3]->Data());
-        InvokeCallback(args[3], package->FullAppId);
+        InvokeCallback(args[3], package.getFullAppId());
       }
+      break;
     case Uninstall:
-      package->Uninstall();
+      package.uninstall();
+      break;
   }
   _tprintf_s(L"Done. Thank you for using MetroDriver.\n");
   return 0;
