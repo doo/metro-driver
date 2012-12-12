@@ -1,5 +1,7 @@
 #pragma once
 
+#include <collection.h>
+
 #include "ApplicationMetadata.h"
 
 namespace doo {
@@ -8,8 +10,8 @@ namespace doo {
     ref class Package sealed
     {
     public:
-      // constructor using a manifest XML
-      Package(Platform::String^ manifestPath);
+      // create from either an .appx or AppxManifest.xml
+      Package(Platform::String^ source);
 
       // when debugging is enabled, the app won't be shut down when in the background
       property bool DebuggingEnabled {
@@ -42,14 +44,20 @@ namespace doo {
     private:
       Windows::ApplicationModel::Package^ findSystemPackage(Platform::String^ version);
       Platform::String^ getPackageVersionString(Windows::ApplicationModel::PackageVersion version);
+      void findDependencyPackages();
+      static void findPackagesInDirectory(std::string appxPath, Platform::Collections::Vector<Windows::Foundation::Uri^>^ targetContainer);
+
+      bool isAppx();
+      Platform::String^ source;
 
       ApplicationMetadata^ metadata;
       Windows::ApplicationModel::Package^ systemPackage;
       Platform::String^ packageSuffix;
+      
       Windows::Management::Deployment::PackageManager^ packageManager;
       Windows::ApplicationModel::Package^ storePackage;
       Windows::Foundation::Uri^ packageUri;
-
+      Platform::Collections::Vector<Windows::Foundation::Uri^>^ dependencyUris;
     };
   }
 }
