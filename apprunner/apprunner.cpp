@@ -134,7 +134,7 @@ int __cdecl main(Platform::Array<String^>^ args) {
 
   Package package(args[1]);
 
-  switch (getAction(args->Length > 2 ? args[2]->Data() : nullptr)) {
+  switch (getAction(args[2]->Data())) {
     case Install:
       package.install(Package::InstallationMode::Reinstall);
       package.enableDebugging(false);
@@ -146,7 +146,7 @@ int __cdecl main(Platform::Array<String^>^ args) {
     case Run:
       runPackage(package);
       // check if there was a callback supplied
-      if (args->Length > 2) {
+      if (args->Length > 3) {
         _tprintf_s(L"Invoking callback: %s\n", args[3]->Data());
         InvokeCallback(args[3], package.getFullAppId());
       }
