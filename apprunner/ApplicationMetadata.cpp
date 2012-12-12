@@ -54,5 +54,5 @@ ApplicationMetadata::ApplicationMetadata(const std::string& xml) {
     publisher = identityNode->Attributes->GetNamedItem("Publisher")->NodeValue->ToString();
   
     auto applicationNode = manifest->SelectSingleNodeNS("//mf:Package/mf:Applications/mf:Application[1]", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
-    appId = applicationNode->Attributes->GetNamedItem("Id")->NodeValue->ToString();
+    appId = applicationNode ? applicationNode->Attributes->GetNamedItem("Id")->NodeValue->ToString() : nullptr;
 }
