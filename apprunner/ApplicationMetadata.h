@@ -8,7 +8,8 @@ namespace doo {
     {
     public:
 
-      ApplicationMetadata(Platform::String^ manifestPath);
+      static ApplicationMetadata^ CreateFromManifest(Platform::String^ manifestPath);
+      static ApplicationMetadata^ CreateFromAppx(Platform::String^ appxPath);
 
       property Platform::String^ PackageName {
         Platform::String^ get() { return packageName; };
@@ -27,6 +28,8 @@ namespace doo {
       }
       
     private:
+
+      ApplicationMetadata(const std::string& xml);
       Platform::String^ packageName;
       Platform::String^ packageVersion;
       Platform::String^ publisher;

@@ -10,6 +10,7 @@ using namespace doo::metrodriver;
 enum Action {
   Run,
   Install,
+  Update,
   Uninstall
 };
 
@@ -18,16 +19,23 @@ Action getAction(const wchar_t* name) {
     return Action::Run;
   } else if (StrCmpIW(name, L"install") == 0) { 
     return Action::Install;
+  } else if (StrCmpIW(name, L"update") == 0) {
+    return Action::Update;
   } else if (StrCmpIW(name, L"uninstall") == 0) {
     return Action::Uninstall;
   }
   throw ref new Platform::FailureException("Invalid action");
 }
 
+static bool endsWith(const std::wstring& str1, const std::wstring& str2) {
+  size_t foundPos = str1.rfind(str2);
+  return (foundPos == (str1.length()-str2.length()));
+}
+
 /*
  validate command line arguments
- the first argument must be a file called AppxManifest.xml
- the second argument is the action to perform: run, install, uninstall
+ the first argument must be a file called AppxManifest.xml or a valid package file ending on ".appx"
+ the second argument is the action to perform: install, update, uninstall or run
  the third is optional but if present must be an existing executable file
 */
 bool validateArguments(Platform::Array<String^>^ args) {
@@ -35,20 +43,19 @@ bool validateArguments(Platform::Array<String^>^ args) {
     _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run.\n");
     return false;
   }
-  std::wstring manifestName(args[1]->Data());
-  std::transform(manifestName.begin(), manifestName.end(), manifestName.begin(), ::tolower);
-  size_t foundPos = manifestName.rfind(L"appxmanifest.xml");
-  if (foundPos == std::wstring::npos || foundPos != args[1]->Length()-16 ) {
-    _tprintf_s(L"The first parameter needs to be a file called AppXManifest.xml\n");
+  std::wstring sourceFileName(args[1]->Data());
+  std::transform(sourceFileName.begin(), sourceFileName.end(), sourceFileName.begin(), ::tolower);
+  if (!(endsWith(sourceFileName, L"appxmanifest.xml") || endsWith(sourceFileName, L".appx"))) {
+    _tprintf_s(L"The first parameter needs to be a file called AppXManifest.xml or an .appx file\n");
     return false;
   }
 
-  std::ifstream manifestFile(args[1]->Data(), std::ifstream::in);
-  if (!manifestFile.is_open()) {
-    _tprintf_s(L"Could not open manifest file %s\n", args[1]->Data());
+  std::ifstream sourceFile(args[1]->Data(), std::ifstream::in);
+  if (!sourceFile.is_open()) {
+    _tprintf_s(L"Could not open %s\n", args[1]->Data());
     return false;
   }
-  manifestFile.close();
+  sourceFile.close();
 
   if (args->Length > 2) {
     try {
@@ -98,19 +105,19 @@ void InvokeCallback(Platform::String^ callback, Platform::String^ fullAppId) {
     }
 }
 
-void runPackage(Package^ package) {
-  package->Install();
-  package->DebuggingEnabled = true;
+void runPackage(Package& package) {
+  package.install(Package::InstallationMode::SkipOrUpdate);
+  package.enableDebugging(true);
 
   // start the application
-  _tprintf_s(L"Launching app %s\n", package->FullAppId->Data());
-  auto processId = package->StartApplication();
+  _tprintf_s(L"Launching app %s\n", package.getFullAppId()->Data());
+  auto processId = package.startApplication();
   auto process = ATL::CHandle(OpenProcess(SYNCHRONIZE, false, (DWORD)processId));
   if (process == INVALID_HANDLE_VALUE) {
     throw ref new Platform::FailureException(L"Could not start app. Terminating.\n");
   }
 
-  _tprintf_s(L"Waiting for application %s to finish...\n", package->FullAppId->Data());
+  _tprintf_s(L"Waiting for application %s to finish...\n", package.getFullAppId()->Data());
   WaitForSingleObjectEx(process, INFINITE, false);
   _tprintf_s(L"Application complete\n");
 }
@@ -125,29 +132,34 @@ int __cdecl main(Platform::Array<String^>^ args) {
     return -1;
   }
 
-  Package^ package;
   try {
-    package = ref new Package(args[1]);
-  } catch (Platform::COMException^ e) {
-    _tprintf_s(L"Error while installing the package: %s\n", e->Message);
-    return e->HResult;
-  }
+    Package package(args[1]);
 
-  switch (getAction(args->Length > 2 ? args[2]->Data() : nullptr)) {
+    switch (getAction(args[2]->Data())) {
     case Install:
-      package->Install();
-      package->DebuggingEnabled = false;
+      package.install(Package::InstallationMode::Reinstall);
+      package.enableDebugging(false);
+      break;
+    case Update:
+      package.install(Package::InstallationMode::Update);
+      package.enableDebugging(false);
       break;
     case Run:
       runPackage(package);
       // check if there was a callback supplied
-      if (args->Length > 2) {
+      if (args->Length > 3) {
         _tprintf_s(L"Invoking callback: %s\n", args[3]->Data());
-        InvokeCallback(args[3], package->FullAppId);
+        InvokeCallback(args[3], package.getFullAppId());
       }
+      break;
     case Uninstall:
-      package->Uninstall();
+      package.uninstall();
+      break;
+    }
+  } catch (Platform::Exception^ e) {
+    _tprintf_s(L"An error occurred: %s\n", e->Message->Data());
   }
+  
   _tprintf_s(L"Done. Thank you for using MetroDriver.\n");
   return 0;
 }
