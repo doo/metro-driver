@@ -16,10 +16,10 @@ Usage
 apprunner.exe [Full\Path\To\AppXManifest.xml] [run|update|install|uninstall] [Full\Path\To\Callback.exe]
 
 Behaviour:
-  run: if an older version is installed, it will be updated and then run the app. if a package with the same version is already installed, it will be run without any further action
-  update: if an older version is installed it will be updated, otherwise it will be installed. error/no action if the same version is already installed
-  install: installs this version of the package. older versions will be uninstalled previously.
-  uninstall: removes all versions of the referenced app
+  * run: if an older version is installed, it will be updated and then run the app. if a package with the same version is already installed, it will be run without any further action
+  * update: if an older version is installed it will be updated, otherwise it will be installed. error/no action if the same version is already installed
+  * install: installs this version of the package. older versions will be uninstalled previously.
+  * uninstall: removes all versions of the referenced app
 
 
 Hints
