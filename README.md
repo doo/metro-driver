@@ -1,7 +1,7 @@
-Metro-Driver Readme
+Metro-Driver Apprunner Readme
 ===================
 
-The Metro-Driver will install, update, uninstall or even run a Windows Store Application package.
+The Metro-Driver Apprunner will install, update, uninstall or even run a Windows Store Application package.
 
 Afterwards, it will optionally invoke a callback executable or script with the full package name as its first and only argument.
 
