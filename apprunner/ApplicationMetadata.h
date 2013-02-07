@@ -26,6 +26,10 @@ namespace doo {
       property Platform::String^ AppId {
         Platform::String^ get() { return appId; };
       }
+
+      property Platform::String^ Architecture {
+        Platform::String^ get() { return architecture; };
+      }
       
     private:
 
@@ -34,6 +38,7 @@ namespace doo {
       Platform::String^ packageVersion;
       Platform::String^ publisher;
       Platform::String^ appId;
+      Platform::String^ architecture;
     };
   }
 }

@@ -52,6 +52,7 @@ ApplicationMetadata::ApplicationMetadata(const std::string& xml) {
     packageName = identityNode->Attributes->GetNamedItem("Name")->NodeValue->ToString();
     packageVersion = identityNode->Attributes->GetNamedItem("Version")->NodeValue->ToString();
     publisher = identityNode->Attributes->GetNamedItem("Publisher")->NodeValue->ToString();
+    architecture = identityNode->Attributes->GetNamedItem("ProcessorArchitecture")->NodeValue->ToString();
   
     auto applicationNode = manifest->SelectSingleNodeNS("//mf:Package/mf:Applications/mf:Application[1]", "xmlns:mf=\"http://schemas.microsoft.com/appx/2010/manifest\"");
     appId = applicationNode ? applicationNode->Attributes->GetNamedItem("Id")->NodeValue->ToString() : nullptr;

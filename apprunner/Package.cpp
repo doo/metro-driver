@@ -128,24 +128,9 @@ void Package::findDependencyPackages() {
   dependencies.clear();
   findDependenciesInDirectory(packageDirectory+"\\Dependencies\\");
   
-  std::string architecturePath;
-  SYSTEM_INFO systemInfo;
-  GetNativeSystemInfo(&systemInfo);
-  switch (systemInfo.wProcessorArchitecture) {
-  case PROCESSOR_ARCHITECTURE_AMD64:
-    architecturePath = "x64";
-    break;
-  case PROCESSOR_ARCHITECTURE_ARM:
-    architecturePath = "ARM";
-    break;
-  case PROCESSOR_ARCHITECTURE_INTEL:
-    architecturePath = "x86";
-    break;
-  default:
-    return; // maybe throw exception?
-  }
-  
-  findDependenciesInDirectory(packageDirectory+"\\Dependencies\\"+architecturePath+"\\");
+
+  std::string architecture = platformToStdString(metadata->Architecture);
+  findDependenciesInDirectory(packageDirectory+"\\Dependencies\\"+architecture+"\\");
 }
 
 void Package::findDependenciesInDirectory(std::string appxPath) {
