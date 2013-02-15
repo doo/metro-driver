@@ -59,13 +59,9 @@ Windows::Foundation::Collections::IIterable<Windows::Foundation::Uri^>^ Package:
 Platform::String^ Package::findStagedManifest(Platform::String^ appxPath) {
   auto metadata = ApplicationMetadata::CreateFromAppx(appxPath);
   std::wstring stagingDirectory = L"C:\\Program Files\\WindowsApps\\";
-  WIN32_FIND_DATAW data;
-  auto hnd = FindFirstFileW((stagingDirectory 
-    + metadata->PackageName->Data() 
-    + L"_" + metadata->PackageVersion->Data() 
-    + L"_*").c_str(), &data);
-  FindClose(hnd);
-  return ref new Platform::String((stagingDirectory+data.cFileName+L"\\AppxManifest.xml").c_str());
+  stagingDirectory += metadata->PackageFullName->Data();
+  stagingDirectory += L"\\AppxManifest.xml";
+  return ref new Platform::String(stagingDirectory.c_str());
 }
 
 void Package::install(InstallationMode mode) {
@@ -128,24 +124,9 @@ void Package::findDependencyPackages() {
   dependencies.clear();
   findDependenciesInDirectory(packageDirectory+"\\Dependencies\\");
   
-  std::string architecturePath;
-  SYSTEM_INFO systemInfo;
-  GetNativeSystemInfo(&systemInfo);
-  switch (systemInfo.wProcessorArchitecture) {
-  case PROCESSOR_ARCHITECTURE_AMD64:
-    architecturePath = "x64";
-    break;
-  case PROCESSOR_ARCHITECTURE_ARM:
-    architecturePath = "ARM";
-    break;
-  case PROCESSOR_ARCHITECTURE_INTEL:
-    architecturePath = "x86";
-    break;
-  default:
-    return; // maybe throw exception?
-  }
-  
-  findDependenciesInDirectory(packageDirectory+"\\Dependencies\\"+architecturePath+"\\");
+
+  std::string architecture = platformToStdString(metadata->Architecture);
+  findDependenciesInDirectory(packageDirectory+"\\Dependencies\\"+architecture+"\\");
 }
 
 void Package::findDependenciesInDirectory(std::string appxPath) {
