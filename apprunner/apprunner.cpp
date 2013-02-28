@@ -40,7 +40,7 @@ static bool endsWith(const std::wstring& str1, const std::wstring& str2) {
 */
 bool validateArguments(Platform::Array<String^>^ args) {
   if (args->Length < 2) {
-    _tprintf_s(L"Please specify the AppxManifest.xml for the application that should be run.\n");
+    _tprintf_s(L"Please specify the AppxManifest.xml or .appx for the application that should be run.\n");
     return false;
   }
   std::wstring sourceFileName(args[1]->Data());

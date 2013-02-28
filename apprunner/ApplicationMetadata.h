@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ppltasks.h>
+#include <AppxPackaging.h>
 
 namespace doo {
   namespace metrodriver {
@@ -15,6 +16,10 @@ namespace doo {
         Platform::String^ get() { return packageName; };
       };
 
+      property Platform::String^ PackageFullName {
+        Platform::String^ get() { return packageFullName; };
+      };
+
       property Platform::String^ PackageVersion {
         Platform::String^ get() { return packageVersion; };
       }
@@ -26,14 +31,21 @@ namespace doo {
       property Platform::String^ AppId {
         Platform::String^ get() { return appId; };
       }
+
+      property Platform::String^ Architecture {
+        Platform::String^ get() { return architecture; };
+      }
       
     private:
 
       ApplicationMetadata(const std::string& xml);
+      ApplicationMetadata(Microsoft::WRL::ComPtr<IAppxManifestReader> manifest);
       Platform::String^ packageName;
+      Platform::String^ packageFullName;
       Platform::String^ packageVersion;
       Platform::String^ publisher;
       Platform::String^ appId;
+      Platform::String^ architecture;
     };
   }
 }
